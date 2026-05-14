@@ -19,7 +19,8 @@
                         success: '#10B981',
                         danger: '#EF4444',
                         warning: '#F59E0B',
-                        purple: '#8B5CF6'
+                        purple: '#8B5CF6',
+                        gold: '#F59E0B' // 黃金現金色
                     }
                 }
             }
@@ -65,9 +66,9 @@
 
         <!-- 1. KPI Cards (Top Row) -->
         <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
-            <!-- 總權益 -->
+            <!-- 總權益 (包含已提領現金) -->
             <div class="glass-card rounded-xl p-5 shadow-sm border-t-4 border-primary">
-                <div class="text-sm text-gray-500 mb-1 font-medium">總組合權益 (含 FundPool)</div>
+                <div class="text-sm text-gray-500 mb-1 font-medium">總創造財富 (含已提領)</div>
                 <div class="text-3xl font-bold text-gray-900" id="kpi-total-equity">$0.00</div>
                 <div class="mt-2 text-xs flex justify-between">
                     <span class="text-gray-500">初始基準: $20,000</span>
@@ -156,14 +157,14 @@
         </div>
 
         <!-- 3. Strategy Details (Bottom Row) -->
-        <h2 class="text-lg font-bold text-gray-800 mb-4 mt-6">策略即時監控面板 (深度 ROI 分析)</h2>
+        <h2 class="text-lg font-bold text-gray-800 mb-4 mt-6">策略即時監控面板 (包含實體現金入袋)</h2>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4" id="strategy-cards">
             <!-- JS 動態生成策略卡片 -->
         </div>
 
         <!-- Footer -->
         <div class="text-center mt-12 text-gray-400 text-xs font-medium">
-            SOP-v2 量化資產戰情室 | Version: V0.2.1 (策略 ROI 透視版) | 專屬資產成長規劃師
+            SOP-v2 量化資產戰情室 | Version: V0.2.2 (出金入袋追蹤版) | 專屬資產成長規劃師
         </div>
     </div>
 
@@ -176,12 +177,13 @@
         let fundPoolChartInstance = null;
 
         window.globalTransactions = [];
-        window.globalStrategyInfo = {}; // 儲存策略初始資訊 (包含本金)
+        window.globalStrategyInfo = {}; 
 
         const predefinedColors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#EC4899', '#14B8A6', '#F97316', '#6366F1', '#84CC16'];
         const eaColorMap = {};
         let colorIdx = 0;
         const getEaColor = (ea) => {
+            if (ea === 'BANK_CASH') return '#F59E0B'; // 黃金色保留給出金帳戶
             if (!eaColorMap[ea]) {
                 eaColorMap[ea] = predefinedColors[colorIdx % predefinedColors.length];
                 colorIdx++;
@@ -196,7 +198,6 @@
         async function initDashboard() {
             try {
                 const timestamp = new Date().getTime();
-                // 並行抓取三個 API：歷史、最新狀態、策略初始資訊
                 const [historyRes, latestRes, infoRes] = await Promise.all([
                     fetch(`${API_BASE}?action=query_history&strategy=all&t=${timestamp}`),
                     fetch(`${API_BASE}?action=get_latest&t=${timestamp}`),
@@ -207,7 +208,7 @@
                 const latestData = await latestRes.json();
                 const infoData = await infoRes.json();
                 
-                window.globalStrategyInfo = infoData; // 存入全域供計算使用
+                window.globalStrategyInfo = infoData; 
 
                 processAndRender(historyData, latestData);
 
@@ -222,6 +223,7 @@
 
         function processAndRender(historyData, latestData) {
             let totalStrategyEquityUSDC = 0;
+            let activeMarketEquityUSDC = 0; // 用來計算在市場裡的風險資金
             let totalFloatingUSDC = 0;
             let alerts = [];
             
@@ -242,11 +244,10 @@
             const globalFundPoolUSD = globalFundPoolUSDC / 100;
             document.getElementById('mini-fundpool-val').innerText = formatUSD(globalFundPoolUSD);
 
-            // 2. 處理歷史資料 (計算淨利與準備資料)
+            // 2. 處理歷史資料 
             let totalNetProfitUSDC = 0;
             const dailyNetProfitMap = {}; 
             const strategyNetProfitSum = {}; 
-            
             const dailyFundPoolMap = {}; 
             let runningFundPool = 0; 
 
@@ -281,25 +282,52 @@
                 }
                 dailyFundPoolMap[date] = runningFundPool; 
 
-                if (grossPnl !== 0 || netPnl !== 0) {
-                    totalNetProfitUSDC += netPnl;
-                    if (date.startsWith(currentMonthString)) {
-                        currentMonthNetProfitUSDC += netPnl;
+                // BANK_CASH 不參與淨利加總與圖表動態
+                if (ea !== 'BANK_CASH') {
+                    if (grossPnl !== 0 || netPnl !== 0) {
+                        totalNetProfitUSDC += netPnl;
+                        if (date.startsWith(currentMonthString)) {
+                            currentMonthNetProfitUSDC += netPnl;
+                        }
+                        window.globalTransactions.push({ date: date, ea: ea, netPnl: netPnl });
                     }
-                    window.globalTransactions.push({ date: date, ea: ea, netPnl: netPnl });
-                }
 
-                if (!dailyNetProfitMap[date]) dailyNetProfitMap[date] = {};
-                dailyNetProfitMap[date][ea] = (dailyNetProfitMap[date][ea] || 0) + netPnl;
-                strategyNetProfitSum[ea] = (strategyNetProfitSum[ea] || 0) + netPnl;
+                    if (!dailyNetProfitMap[date]) dailyNetProfitMap[date] = {};
+                    dailyNetProfitMap[date][ea] = (dailyNetProfitMap[date][ea] || 0) + netPnl;
+                    strategyNetProfitSum[ea] = (strategyNetProfitSum[ea] || 0) + netPnl;
+                }
                 
                 getEaColor(ea); 
             });
 
-            // 3. 處理最新狀態與 EA 策略卡片 (加上 ROI 分析)
+            // 3. 處理最新狀態與 EA 策略卡片
             const cardsContainer = document.getElementById('strategy-cards');
             cardsContainer.innerHTML = ''; 
 
+            // ================== 特殊卡片渲染區 ==================
+            
+            // A. 已入袋實體銀行現金 (如果存在)
+            if (latestData['BANK_CASH']) {
+                const bankCashUSD = latestData['BANK_CASH'].equality / 100;
+                totalStrategyEquityUSDC += latestData['BANK_CASH'].equality; // 計入總財富
+                
+                const bankCardHTML = `
+                    <div class="bg-gradient-to-br from-yellow-50 to-white rounded-lg p-4 border-l-4 shadow-md relative overflow-hidden border-yellow-500">
+                        <div class="flex justify-between items-start mb-2">
+                            <h3 class="font-bold text-yellow-700 text-sm truncate w-full">🌟 已提領入袋 (Realized)</h3>
+                        </div>
+                        <div class="text-2xl font-bold text-yellow-600 mb-1">${formatUSD(bankCashUSD)}</div>
+                        <div class="mt-3 flex flex-col gap-1.5 pt-3 border-t border-yellow-100">
+                            <div class="flex justify-between items-center">
+                                <span class="text-xs text-yellow-600 font-medium">已轉移至實體銀行帳戶</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                cardsContainer.innerHTML += bankCardHTML;
+            }
+
+            // B. 全域備用資金池
             const fundPoolCardHTML = `
                 <div class="bg-white rounded-lg p-4 border-l-4 shadow-sm relative overflow-hidden" style="border-left-color: #8B5CF6">
                     <div class="flex justify-between items-start mb-2">
@@ -315,11 +343,16 @@
             `;
             cardsContainer.innerHTML += fundPoolCardHTML;
 
+            // ====================================================
+
             Object.keys(latestData).forEach(strategyName => {
+                if (strategyName === 'BANK_CASH') return; // 已單獨處理
+                
                 const s = latestData[strategyName];
                 if (s.equality === 0 && s.balance === 0) return; 
 
                 totalStrategyEquityUSDC += s.equality; 
+                activeMarketEquityUSDC += s.equality; // 計算在市場承受風險的資金
                 totalFloatingUSDC += s.floatingPL;
                 getEaColor(strategyName);
 
@@ -334,7 +367,6 @@
                 const floatUSD = s.floatingPL / 100;
                 const isFloatNegative = floatUSD < 0;
 
-                // ✨ 計算 ROI
                 const netProfitUSD = (strategyNetProfitSum[strategyName] || 0) / 100;
                 const info = window.globalStrategyInfo[strategyName];
                 let initialBalanceUSD = 0;
@@ -390,11 +422,15 @@
             const last7Dates = uniqueDates.slice(-7);
             let last7NetProfitUSDC = 0;
             last7Dates.forEach(d => {
-                Object.values(dailyNetProfitMap[d]).forEach(val => last7NetProfitUSDC += val);
+                if (dailyNetProfitMap[d]) {
+                    Object.values(dailyNetProfitMap[d]).forEach(val => last7NetProfitUSDC += val);
+                }
             });
             const avg7DayUSDC = last7Dates.length > 0 ? (last7NetProfitUSDC / last7Dates.length) : 0;
 
-            const totalEquityUSD = (totalStrategyEquityUSDC + globalFundPoolUSDC) / 100;
+            const totalWealthUSD = (totalStrategyEquityUSDC + globalFundPoolUSDC) / 100;
+            const activeRiskMoneyUSD = (activeMarketEquityUSDC + globalFundPoolUSDC) / 100; // 用來觸發 SOP 紅線
+            
             const totalNetProfitUSD = totalNetProfitUSDC / 100;
             const avg7DayUSD = avg7DayUSDC / 100;
             const monthlyNetProfitUSD = currentMonthNetProfitUSDC / 100;
@@ -412,8 +448,8 @@
                 document.getElementById('kpi-monthly-progress').innerText = monthlyProgress.toFixed(1) + '%';
             }
 
-            document.getElementById('kpi-total-equity').innerText = formatUSD(totalEquityUSD);
-            const roi = ((totalEquityUSD - 20000) / 20000) * 100;
+            document.getElementById('kpi-total-equity').innerText = formatUSD(totalWealthUSD);
+            const roi = ((totalWealthUSD - 20000) / 20000) * 100;
             document.getElementById('kpi-total-roi').innerText = `${roi > 0 ? '+' : ''}${roi.toFixed(2)}%`;
 
             document.getElementById('kpi-total-profit').innerText = formatUSD(totalNetProfitUSD);
@@ -422,7 +458,7 @@
             document.getElementById('kpi-7day-avg').innerText = formatUSD(avg7DayUSD);
 
             const goalUSD = 40000;
-            const diffGoalUSD = goalUSD - totalEquityUSD;
+            const diffGoalUSD = goalUSD - totalWealthUSD;
             if (diffGoalUSD <= 0) {
                 document.getElementById('kpi-goal-days').innerText = "已達標 🎉";
                 document.getElementById('kpi-goal-days').className = "text-3xl font-bold text-success";
@@ -438,8 +474,9 @@
                 }
             }
 
-            if (totalEquityUSD < 15000) {
-                alerts.push(`🚨 總權益跌破 $15,000 紅線！目前為 ${formatUSD(totalEquityUSD)}，請立即執行 SOP 人工介入！`);
+            // SOP 紅線是看「在市場裡的錢 (Active Risk Money)」，如果提領太多導致本金 < 15K 也算觸發
+            if (activeRiskMoneyUSD < 15000) {
+                alerts.push(`🚨 在市資金跌破 $15,000 紅線！目前為 ${formatUSD(activeRiskMoneyUSD)}，請注意系統健康度！`);
             }
 
             if (alerts.length > 0) {
@@ -457,7 +494,6 @@
             renderFundPoolChart(uniqueDates, dailyFundPoolMap);
         }
 
-        // 動態切換時間維度
         function updateTrendChart(timeframe) {
             const btns = {
                 'day': document.getElementById('btn-tf-day'),
@@ -503,7 +539,7 @@
             const ctx = document.getElementById('trendChart').getContext('2d');
             if (trendChartInstance) trendChartInstance.destroy();
 
-            const activeStrategies = Object.keys(eaColorMap);
+            const activeStrategies = Object.keys(eaColorMap).filter(ea => ea !== 'BANK_CASH');
             
             const datasets = activeStrategies.map(ea => {
                 return {
@@ -607,7 +643,7 @@
             if (compChartInstance) compChartInstance.destroy();
 
             const sortedStrategies = Object.keys(strategyNetProfitSum)
-                .filter(ea => strategyNetProfitSum[ea] !== 0)
+                .filter(ea => strategyNetProfitSum[ea] !== 0 && ea !== 'BANK_CASH')
                 .sort((a, b) => strategyNetProfitSum[b] - strategyNetProfitSum[a]);
 
             const dataUSD = sortedStrategies.map(ea => strategyNetProfitSum[ea] / 100);
@@ -632,7 +668,6 @@
                         tooltip: {
                             callbacks: {
                                 label: function(context) {
-                                    // ✨ 在長條圖的 tooltip 加上 ROI 顯示
                                     const eaName = context.label;
                                     const netProfitUSD = context.parsed.x;
                                     const info = window.globalStrategyInfo[eaName];
