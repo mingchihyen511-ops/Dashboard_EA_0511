@@ -3,9 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SOP-v2 戰情室 | $20K 量化組合</title>
+    <title>SOP-v2 戰情室 | $20K+ 量化組合</title>
+    <!-- 引入 Tailwind CSS 與 Chart.js -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- 引入 FontAwesome 圖標 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
     <script>
         tailwind.config = {
             theme: {
@@ -14,13 +18,13 @@
                         base: '#F4F7F6',
                         surface: '#FFFFFF',
                         border: '#E5E7EB',
-                        primary: '#1E3A8A', 
-                        accent: '#3B82F6',
-                        success: '#10B981',
-                        danger: '#EF4444',
-                        warning: '#F59E0B',
-                        purple: '#8B5CF6',
-                        gold: '#F59E0B' // 黃金現金色
+                        primary: '#1E3A8A', // 經典深藍
+                        accent: '#3B82F6',  // 亮藍
+                        success: '#10B981', // 翡翠綠
+                        danger: '#EF4444',  // 警報紅
+                        warning: '#F59E0B', // 琥珀黃
+                        purple: '#8B5CF6',  // 質感紫 (FundPool)
+                        gold: '#F59E0B'     // 黃金現金色
                     }
                 }
             }
@@ -33,7 +37,6 @@
         .loader { border: 4px solid #f3f3f3; border-top: 4px solid #3B82F6; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .glass-card { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.2); }
-        
         .tf-btn { transition: all 0.2s ease; }
         .tf-btn.active { background-color: #FFFFFF; color: #1E3A8A; box-shadow: 0 1px 3px rgba(0,0,0,0.1); font-weight: 600; }
         .tf-btn.inactive { color: #6B7280; }
@@ -44,15 +47,26 @@
 
     <div class="max-w-[1400px] mx-auto px-4 py-6">
         <!-- Header -->
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
             <div>
-                <h1 class="text-2xl font-bold text-primary flex items-center">
-                    <span class="mr-2">📊</span> SOP-v2 總體資產戰情室
+                <h1 class="text-2xl font-bold text-primary flex items-center gap-2">
+                    <span>📊</span> SOP-v2 總體資產戰情室
                 </h1>
                 <p class="text-sm text-gray-500 mt-1">短中目標：每月 $5,000 USD 現金流 | 長期目標：$40,000 USD 組合規模</p>
             </div>
-            <div id="last-update-time" class="mt-4 md:mt-0 text-xs text-gray-400 bg-white px-3 py-1 rounded-full shadow-sm border">
-                資料載入中...
+            <div class="flex items-center gap-2">
+                <!-- API 狀態與時間指示器 -->
+                <div id="api-status-tag" class="text-xs font-semibold text-amber-600 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-full shadow-sm flex items-center gap-2">
+                    <span id="api-status-dot" class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                    <span id="api-status-text">同步 API 中</span>
+                </div>
+                <div id="last-update-time" class="text-xs text-gray-400 bg-white px-3 py-1.5 rounded-full shadow-sm border">
+                    資料載入中...
+                </div>
+                <!-- API 設定按鈕 -->
+                <button onclick="toggleSettingsModal()" class="bg-gray-100 hover:bg-gray-200 p-2 rounded-full border shadow-sm transition-all text-gray-600 hover:text-gray-900" title="設定 API 網址">
+                    <i class="fa-solid fa-gear"></i>
+                </button>
             </div>
         </div>
 
@@ -100,7 +114,7 @@
 
             <!-- 近7日均獲利 -->
             <div class="glass-card rounded-xl p-5 shadow-sm border-t-4 border-success">
-                <div class="text-sm text-gray-500 mb-1 font-medium">近7日均獲利 (7-Day Avg Profit)</div>
+                <div class="text-sm text-gray-500 mb-1 font-medium">近7日均獲利 (7-Day Avg)</div>
                 <div class="text-3xl font-bold text-success" id="kpi-7day-avg">$0.00</div>
                 <div class="mt-2 text-xs text-gray-500">日均現金流動能</div>
             </div>
@@ -123,12 +137,21 @@
         <div class="flex flex-col lg:flex-row gap-4 mb-4 hidden" id="main-charts-wrapper">
             <!-- 每日獲利趨勢 (65%) -->
             <div class="w-full lg:w-[65%] bg-white rounded-xl shadow-sm border border-border p-5">
-                <div class="flex justify-between items-center mb-4">
+                <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-4 gap-3">
                     <h2 class="text-lg font-bold text-gray-800">實收淨利趨勢 (Net Profit Trend)</h2>
-                    <div class="flex bg-gray-100 p-1 rounded-lg border border-gray-200">
-                        <button id="btn-tf-day" onclick="updateTrendChart('day')" class="tf-btn active px-3 py-1 text-xs rounded">日</button>
-                        <button id="btn-tf-week" onclick="updateTrendChart('week')" class="tf-btn inactive px-3 py-1 text-xs rounded">週</button>
-                        <button id="btn-tf-month" onclick="updateTrendChart('month')" class="tf-btn inactive px-3 py-1 text-xs rounded">月</button>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <!-- 🚀 快捷全選 / 全不選控制組 -->
+                        <div class="flex border border-gray-200 rounded-lg p-0.5 bg-gray-50 text-[11px] font-semibold shadow-sm">
+                            <button onclick="toggleAllStrategies(true)" class="px-2.5 py-1 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded transition-all">全選</button>
+                            <div class="w-[1px] bg-gray-200 my-1"></div>
+                            <button onclick="toggleAllStrategies(false)" class="px-2.5 py-1 text-gray-600 hover:text-red-500 hover:bg-red-50 rounded transition-all">全不選</button>
+                        </div>
+                        <!-- 時間區間切換 -->
+                        <div class="flex bg-gray-100 p-1 rounded-lg border border-gray-200 shadow-sm">
+                            <button id="btn-tf-day" onclick="updateTrendChart('day')" class="tf-btn active px-3 py-1 text-xs rounded">日</button>
+                            <button id="btn-tf-week" onclick="updateTrendChart('week')" class="tf-btn inactive px-3 py-1 text-xs rounded">週</button>
+                            <button id="btn-tf-month" onclick="updateTrendChart('month')" class="tf-btn inactive px-3 py-1 text-xs rounded">月</button>
+                        </div>
                     </div>
                 </div>
                 <div class="chart-container">
@@ -145,11 +168,11 @@
             </div>
         </div>
 
-        <!-- 獨立 FundPool 變化曲線 (輔助視窗) -->
+        <!-- 獨立 FundPool 變化曲線 -->
         <div class="bg-white rounded-xl shadow-sm border border-border p-3 mb-6 hidden" id="fundpool-chart-wrapper">
             <div class="flex justify-between items-center mb-1 px-1">
                 <h2 class="text-xs font-bold text-gray-500 uppercase tracking-wider">備用資金池動能 (FundPool Sparkline)</h2>
-                <span class="text-xs text-purple-600 font-semibold" id="mini-fundpool-val"></span>
+                <span class="text-xs text-purple font-semibold" id="mini-fundpool-val"></span>
             </div>
             <div class="sparkline-container">
                 <canvas id="fundPoolChart"></canvas>
@@ -157,20 +180,50 @@
         </div>
 
         <!-- 3. Strategy Details (Bottom Row) -->
-        <h2 class="text-lg font-bold text-gray-800 mb-4 mt-6">策略即時監控面板 (包含實體現金入袋)</h2>
+        <h2 class="text-lg font-bold text-gray-800 mb-4 mt-6">策略即時監控面板 (動態加總投入本金版)</h2>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4" id="strategy-cards">
             <!-- JS 動態生成策略卡片 -->
         </div>
 
         <!-- Footer -->
         <div class="text-center mt-12 text-gray-400 text-xs font-medium">
-            SOP-v2 量化資產戰情室 | Version: V0.2.2 (出金入袋追蹤版) | 專屬資產成長規劃師
+            SOP-v2 量化資產戰情室 | Version: V0.3.1 (動態累計本金對接版) | 專屬資產成長規劃師
+        </div>
+    </div>
+
+    <!-- 設定 API URL 的 Modal 彈窗 -->
+    <div id="settingsModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-xl border border-gray-200 shadow-2xl max-w-lg w-full overflow-hidden">
+            <div class="px-6 py-4 bg-primary text-white flex justify-between items-center">
+                <h3 class="font-bold text-sm"><i class="fa-solid fa-gears mr-1.5"></i> Google Apps Script Web App 設定</h3>
+                <button onclick="toggleSettingsModal()" class="text-slate-400 hover:text-white transition-all">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <div class="p-6 space-y-4 text-xs">
+                <p class="text-gray-500 leading-relaxed">
+                    請在此處貼上您已部署的 **Google Apps Script** 網頁應用程式 URL（例如 v8/v9 版本的 Web App 網址）。系統會將此設定儲存於瀏覽器快取中。
+                </p>
+                <div class="space-y-1.5">
+                    <label class="font-semibold text-gray-700">API Web App URL:</label>
+                    <input id="apiUrlInput" type="text" placeholder="https://script.google.com/macros/s/.../exec" class="w-full p-2.5 border border-gray-300 rounded-lg bg-gray-50 text-gray-800 font-mono text-xs focus:ring-2 focus:ring-accent focus:outline-none">
+                </div>
+                <div class="bg-blue-50 p-3 rounded-lg border border-blue-100 text-[11px] text-blue-700 leading-normal">
+                    <strong>💡 小提示：</strong><br>
+                    若留空並保存，系統將自動套用預設的 API 網址拉取數據。
+                </div>
+            </div>
+            <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-2 text-xs">
+                <button onclick="toggleSettingsModal()" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg text-gray-700 font-medium transition-all">取消</button>
+                <button onclick="saveApiUrl()" class="px-4 py-2 bg-accent hover:bg-accent/90 text-white rounded-lg font-medium shadow-md transition-all">保存配置並重載</button>
+            </div>
         </div>
     </div>
 
     <script>
-        // ⚠️ 保持您的最新 V8 Apps Script URL
-        const API_BASE = "https://script.google.com/macros/s/AKfycbwSlRKHFAU_maw4JVu_oBuoP9i0WzR1N9EBmEPH8MydkmFuJHxOAwnMBqwY7cUUAQYQXg/exec";
+        // 預設 API 網址 (v9 邏輯網址)
+        const DEFAULT_API_URL = "https://script.google.com/macros/s/AKfycbySNxkSIhGNsICNptNdjNy8QE7vv2Ak0uTB_mW1kjn3r-D_TfqnbbDRaA4htxirq1WUeQ/exec";
+        let API_BASE = localStorage.getItem("SOP_V2_API_URL") || DEFAULT_API_URL;
         
         let trendChartInstance = null;
         let compChartInstance = null;
@@ -178,6 +231,9 @@
 
         window.globalTransactions = [];
         window.globalStrategyInfo = {}; 
+        
+        // 記憶各個策略的顯示隱藏狀態 (動態全選/全不選基礎)
+        window.strategyVisibility = {}; 
 
         const predefinedColors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#EC4899', '#14B8A6', '#F97316', '#6366F1', '#84CC16'];
         const eaColorMap = {};
@@ -197,12 +253,19 @@
 
         async function initDashboard() {
             try {
+                setApiStatus("loading", "正在同步 Google Sheets 數據...");
+                document.getElementById("apiUrlInput").value = API_BASE === DEFAULT_API_URL ? "" : API_BASE;
+                
                 const timestamp = new Date().getTime();
                 const [historyRes, latestRes, infoRes] = await Promise.all([
                     fetch(`${API_BASE}?action=query_history&strategy=all&t=${timestamp}`),
                     fetch(`${API_BASE}?action=get_latest&t=${timestamp}`),
                     fetch(`${API_BASE}?action=get_strategy_info&t=${timestamp}`)
                 ]);
+
+                if (!historyRes.ok || !latestRes.ok || !infoRes.ok) {
+                    throw new Error("API Connection Failed");
+                }
 
                 const historyData = await historyRes.json();
                 const latestData = await latestRes.json();
@@ -214,10 +277,12 @@
 
                 const now = new Date();
                 document.getElementById('last-update-time').innerText = `最後更新: ${now.toLocaleTimeString()}`;
+                setApiStatus("success", "數據流同步完成");
 
             } catch (error) {
                 console.error("載入資料失敗:", error);
-                document.getElementById('chart-loader').innerHTML = `<span class="text-danger">資料載入失敗，請確認 API 網址是否正確。</span>`;
+                setApiStatus("error", "API 同步失敗");
+                document.getElementById('chart-loader').innerHTML = `<span class="text-danger font-medium"><i class="fa-solid fa-triangle-exclamation mr-1"></i> 資料載入失敗，請確認 API 設定或 CORS 權限。</span>`;
             }
         }
 
@@ -336,7 +401,7 @@
                     <div class="text-xl font-bold text-gray-900 mb-1">${formatUSD(globalFundPoolUSD)}</div>
                     <div class="mt-3 flex flex-col gap-1.5 pt-3 border-t border-gray-100">
                         <div class="flex justify-between items-center">
-                            <span class="text-xs text-purple-600 font-medium">隨時支援前線，獨立控管</span>
+                            <span class="text-xs text-purple font-medium">隨時支援前線，獨立控管</span>
                         </div>
                     </div>
                 </div>
@@ -369,14 +434,16 @@
 
                 const netProfitUSD = (strategyNetProfitSum[strategyName] || 0) / 100;
                 const info = window.globalStrategyInfo[strategyName];
-                let initialBalanceUSD = 0;
+                
+                // ✨ 整合 dynamic get_strategy_info：投入本金 = I欄 (initialBalance) + J欄 (initialCredit) 的加總
+                let investedCapitalUSD = 0;
                 let roiPercentStr = "N/A";
                 let roiColor = "text-gray-500";
 
-                if (info && info.initialBalance) {
-                    initialBalanceUSD = info.initialBalance / 100;
-                    if (initialBalanceUSD > 0) {
-                        const roi = (netProfitUSD / initialBalanceUSD) * 100;
+                if (info) {
+                    investedCapitalUSD = (Number(info.initialBalance || 0) + Number(info.initialCredit || 0)) / 100;
+                    if (investedCapitalUSD > 0) {
+                        const roi = (netProfitUSD / investedCapitalUSD) * 100;
                         roiPercentStr = (roi > 0 ? '+' : '') + roi.toFixed(2) + '%';
                         roiColor = roi >= 0 ? "text-success" : "text-danger";
                     }
@@ -392,7 +459,7 @@
                                 <span class="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">${s.date.substring(5)}</span>
                             </div>
                             <div class="text-xl font-bold text-gray-900 mb-1">${formatUSD(equityUSD)}</div>
-                            <div class="text-xs text-gray-500 mb-2">初始本金: ${formatUSD(initialBalanceUSD)}</div>
+                            <div class="text-xs text-gray-500 mb-2">投入本金: ${formatUSD(investedCapitalUSD)}</div>
                         </div>
 
                         <div class="mt-2 flex flex-col gap-1.5 pt-2 border-t border-gray-100">
@@ -482,6 +549,8 @@
             if (alerts.length > 0) {
                 document.getElementById('alert-message').innerHTML = alerts.join('<br>');
                 document.getElementById('alert-banner').classList.remove('hidden');
+            } else {
+                document.getElementById('alert-banner').classList.add('hidden');
             }
 
             // 5. 繪製圖表
@@ -535,6 +604,24 @@
             renderTrendChart(sortedKeys, aggregatedMap, timeframe);
         }
 
+        // 🚀 新增控制項：快速設定所有策略的隱藏/顯示
+        function toggleAllStrategies(visible) {
+            const activeStrategies = Object.keys(eaColorMap).filter(ea => ea !== 'BANK_CASH');
+            
+            // 寫入全域狀態，以便時間軸切換時能留存偏好
+            activeStrategies.forEach(ea => {
+                window.strategyVisibility[ea] = visible;
+            });
+            
+            // 直接更新當前顯示的圖表
+            if (trendChartInstance) {
+                trendChartInstance.data.datasets.forEach(ds => {
+                    ds.hidden = !visible;
+                });
+                trendChartInstance.update();
+            }
+        }
+
         function renderTrendChart(dates, aggregatedMap, timeframe) {
             const ctx = document.getElementById('trendChart').getContext('2d');
             if (trendChartInstance) trendChartInstance.destroy();
@@ -542,12 +629,16 @@
             const activeStrategies = Object.keys(eaColorMap).filter(ea => ea !== 'BANK_CASH');
             
             const datasets = activeStrategies.map(ea => {
+                // 檢查是否已有偏好的顯示狀態，若無則預設為 true (顯示)
+                const isVisible = window.strategyVisibility[ea] !== false;
+                
                 return {
                     type: 'bar',
                     label: ea,
                     data: dates.map(date => (aggregatedMap[date][ea] || 0) / 100),
                     backgroundColor: eaColorMap[ea],
-                    borderWidth: 0
+                    borderWidth: 0,
+                    hidden: !isVisible // 對齊 Chart.js 的隱藏狀態
                 };
             }).filter(dataset => dataset.data.some(val => val !== 0)); 
 
@@ -572,7 +663,24 @@
                         }
                     },
                     plugins: {
-                        legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } } },
+                        legend: { 
+                            position: 'bottom', 
+                            labels: { boxWidth: 12, font: { size: 10 } },
+                            // 🚀 當用戶點擊內建圖例時，也將該策略狀態同步至全域記憶體中
+                            onClick: function(e, legendItem, legend) {
+                                const index = legendItem.datasetIndex;
+                                const ci = legend.chart;
+                                const meta = ci.getDatasetMeta(index);
+
+                                meta.hidden = meta.hidden === null ? !ci.data.datasets[index].hidden : null;
+                                ci.data.datasets[index].hidden = !ci.data.datasets[index].hidden;
+                                
+                                const label = legendItem.text;
+                                window.strategyVisibility[label] = !ci.data.datasets[index].hidden;
+
+                                ci.update();
+                            }
+                        },
                         tooltip: {
                             callbacks: {
                                 label: function(context) {
@@ -605,7 +713,7 @@
                         label: '備用資金池',
                         data: dates.map(date => (dailyFundPoolMap[date] || 0) / 100),
                         borderColor: '#8B5CF6',
-                        backgroundColor: 'rgba(139, 92, 246, 0.2)',
+                        backgroundColor: 'rgba(139, 92, 246, 0.1)',
                         borderWidth: 2,
                         pointBackgroundColor: '#8B5CF6',
                         pointRadius: 0, 
@@ -673,10 +781,11 @@
                                     const info = window.globalStrategyInfo[eaName];
                                     let roiStr = "";
                                     
-                                    if (info && info.initialBalance) {
-                                        const initialBalanceUSD = info.initialBalance / 100;
-                                        if (initialBalanceUSD > 0) {
-                                            const roi = (netProfitUSD / initialBalanceUSD) * 100;
+                                    if (info) {
+                                        // 完美整合本金加總邏輯 (投入本金 = initialBalance + initialCredit)
+                                        const investedCapitalUSD = (Number(info.initialBalance || 0) + Number(info.initialCredit || 0)) / 100;
+                                        if (investedCapitalUSD > 0) {
+                                            const roi = (netProfitUSD / investedCapitalUSD) * 100;
                                             roiStr = ` (ROI: ${(roi > 0 ? '+' : '')}${roi.toFixed(2)}%)`;
                                         }
                                     }
@@ -694,6 +803,45 @@
                     }
                 }
             });
+        }
+
+        // Settings Modal 控制與本地儲存
+        function toggleSettingsModal() {
+            const modal = document.getElementById("settingsModal");
+            modal.classList.toggle("hidden");
+        }
+
+        function saveApiUrl() {
+            const val = document.getElementById("apiUrlInput").value.trim();
+            if (val) {
+                localStorage.setItem("SOP_V2_API_URL", val);
+                API_BASE = val;
+            } else {
+                localStorage.removeItem("SOP_V2_API_URL");
+                API_BASE = DEFAULT_API_URL;
+            }
+            toggleSettingsModal();
+            initDashboard();
+        }
+
+        function setApiStatus(type, msg) {
+            const dot = document.getElementById("api-status-dot");
+            const txt = document.getElementById("api-status-text");
+            const tag = document.getElementById("api-status-tag");
+            
+            if (type === "success") {
+                dot.className = "w-2 h-2 rounded-full bg-success";
+                tag.className = "text-xs font-semibold text-success bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-full shadow-sm flex items-center gap-2";
+                txt.innerText = msg;
+            } else if (type === "loading") {
+                dot.className = "w-2 h-2 rounded-full bg-warning animate-pulse";
+                tag.className = "text-xs font-semibold text-warning bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-full shadow-sm flex items-center gap-2";
+                txt.innerText = msg;
+            } else {
+                dot.className = "w-2 h-2 rounded-full bg-danger animate-pulse";
+                tag.className = "text-xs font-semibold text-danger bg-red-50 border border-red-200 px-3 py-1.5 rounded-full shadow-sm flex items-center gap-2";
+                txt.innerText = msg;
+            }
         }
 
         window.onload = initDashboard;
