@@ -1,0 +1,142 @@
+function doGet(e) {
+  // --- 防呆機制：基本參數檢查 ---
+  if (!e || !e.parameter || !e.parameter.action) {
+    return ContentService.createTextOutput(JSON.stringify({ 
+      "status": "error", 
+      "message": "缺少 action 參數。請指定 query_history, get_latest 或 get_strategy_info" 
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+
+  var action = e.parameter.action;
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName("Sheet1"); 
+
+  if (!sheet) {
+    return ContentService.createTextOutput(JSON.stringify({ "status": "error", "message": "找不到 Sheet1" })).setMimeType(ContentService.MimeType.JSON);
+  }
+
+  var data = sheet.getDataRange().getValues();
+
+  // --------------------------------------------------
+  // 【功能 1】彈性區間查詢 (V6：包含 floatingPL 與 fundPool)
+  // 網址範例：.../exec?action=query_history&strategy=all
+  // --------------------------------------------------
+  if (action == 'query_history') {
+    var targetStrategy = e.parameter.strategy; 
+    var startDateStr = e.parameter.start; 
+    var endDateStr = e.parameter.end; 
+
+    // --- [邏輯優化] 自動計算 90 天時間窗口 ---
+    var firstDateInSheet = new Date(data[1][0]); // 表格第一筆資料 (開始交易日)
+    var lastDateInSheet = new Date(data[data.length - 1][0]); // 最新一筆資料日期
+    var day90Ms = 90 * 24 * 60 * 60 * 1000; // 90天的毫秒數
+    
+    var defaultStart, defaultEnd;
+
+    // 判斷交易天數是否超過 90 天
+    if ((lastDateInSheet - firstDateInSheet) > day90Ms) {
+      // 超過 90 天：從最新日期往前推 90 天
+      defaultStart = new Date(lastDateInSheet.getTime() - day90Ms);
+      defaultEnd = lastDateInSheet;
+    } else {
+      // 未滿 90 天：顯示從開始交易至今的所有資料
+      defaultStart = firstDateInSheet;
+      defaultEnd = lastDateInSheet;
+    }
+
+    // 如果使用者手動輸入日期參數，則覆蓋預設值
+    var startDate = startDateStr ? new Date(startDateStr) : defaultStart;
+    var endDate = endDateStr ? new Date(endDateStr) : defaultEnd;
+    endDate.setHours(23, 59, 59, 999); 
+
+    // 處理策略過濾 (若為 all 或空值則抓取全部)
+    var strategyList = [];
+    if (targetStrategy && targetStrategy !== 'all') {
+      strategyList = targetStrategy.split(',').map(function(item) { return item.trim(); });
+    }
+
+    var results = []; 
+    for (var i = 1; i < data.length; i++) {
+      if (data[i][0] === "" || isNaN(new Date(data[i][0]).getTime())) continue; 
+      
+      var rowDate = new Date(data[i][0]);
+      var strategyName = data[i][2]; 
+
+      var isMatch = (strategyList.length === 0 || strategyList.indexOf(strategyName) !== -1);
+
+      if (isMatch && rowDate >= startDate && rowDate <= endDate) {
+        var dateString = Utilities.formatDate(rowDate, Session.getScriptTimeZone(), "yyyy/MM/dd");
+        results.push({
+          "date": dateString,
+          "platform": data[i][1],
+          "strategy": strategyName,
+          "grossPnL": data[i][3],
+          "profitShare": data[i][4] || 0, // 補上 ProfitShare 欄位 (Excel E 欄，即 index 4)
+          "floatingPL": data[i][7], // 儲存格 Index 7: FloatingPL
+          "endBalance": data[i][10], // 儲存格 Index 10: EndBalance
+          "equality": data[i][12],   // 儲存格 Index 12: Equality
+          "fundPool": data[i][13] || 0 // 歷史 FundPool
+        });
+      }
+    }
+    return ContentService.createTextOutput(JSON.stringify(results)).setMimeType(ContentService.MimeType.JSON);
+  }
+
+  // --------------------------------------------------
+  // 【功能 2】取得各策略最新狀態 (V6：保留 floatingPL，移除無意義的 fundPool)
+  // --------------------------------------------------
+  else if (action == 'get_latest') {
+    var latestData = {};
+    for (var i = data.length - 1; i > 0; i--) {
+      var strategyName = data[i][2];
+      if (strategyName != "" && latestData[strategyName] === undefined) {
+        var rawDate = data[i][0];
+        var dateString = (rawDate instanceof Date) ? Utilities.formatDate(rawDate, Session.getScriptTimeZone(), "yyyy/MM/dd") : rawDate.toString();
+
+        latestData[strategyName] = {
+          "date": dateString,
+          "equality": data[i][12] || 0,
+          "credit": data[i][11] || 0,
+          "balance": data[i][10] || 0,
+          "floatingPL": data[i][7] || 0  // 確保保留 FloatingPL
+        };
+      }
+    }
+    return ContentService.createTextOutput(JSON.stringify(latestData)).setMimeType(ContentService.MimeType.JSON);
+  }
+
+  // --------------------------------------------------
+  // 【功能 3】查詢策略累計本金與信用額資訊 (用於精確計算總績效與動態 ROI)
+  // --------------------------------------------------
+  else if (action == 'get_strategy_info') {
+    var strategyInfo = {};
+    for (var i = 1; i < data.length; i++) {
+      var strategyName = data[i][2];
+      if (strategyName != "") {
+        var rawDate = data[i][0];
+        var dateString = (rawDate instanceof Date) ? Utilities.formatDate(rawDate, Session.getScriptTimeZone(), "yyyy/MM/dd") : rawDate.toString();
+
+        // 讀取 欄位I (TransferIn-Bal，即 index 8) 與 欄位J (Bonus-Cred，即 index 9) 的數值
+        var transferInVal = Number(data[i][8]) || 0;
+        var bonusCredVal = Number(data[i][9]) || 0;
+
+        if (strategyInfo[strategyName] === undefined) {
+          // 初始化策略物件
+          strategyInfo[strategyName] = {
+            "platform": data[i][1],
+            "joinDate": dateString, // 記錄策略首次出現日期
+            "initialBalance": transferInVal,
+            "initialCredit": bonusCredVal
+          };
+        } else {
+          // ⚠️ 關鍵修正：若該策略已有資料，則將後續的所有增資 (I欄) 及贈金 (J欄) 持續累加，以取得真實累計值
+          strategyInfo[strategyName]["initialBalance"] += transferInVal;
+          strategyInfo[strategyName]["initialCredit"] += bonusCredVal;
+        }
+      }
+    }
+    return ContentService.createTextOutput(JSON.stringify(strategyInfo)).setMimeType(ContentService.MimeType.JSON);
+  }
+
+  return ContentService.createTextOutput("未知的 API 指令").setMimeType(ContentService.MimeType.TEXT);
+}
