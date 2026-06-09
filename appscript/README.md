@@ -21,3 +21,7 @@ When updating Google Apps Script:
 - `query_history`
 - `get_latest`
 - `get_strategy_info`
+
+## Deployments
+
+- v10: `https://script.google.com/macros/s/AKfycbxwKgM6YfN7eJt4Li-M19ewj9keGyIaZz10zi6uyo0jURGtUVWqoIPUX1nHeJIQf8Fdtg/exec`

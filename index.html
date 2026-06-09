@@ -257,9 +257,16 @@
     </div>
 
     <script>
-        // 預設 API 網址 (v9 邏輯網址)
-        const DEFAULT_API_URL = "https://script.google.com/macros/s/AKfycbySNxkSIhGNsICNptNdjNy8QE7vv2Ak0uTB_mW1kjn3r-D_TfqnbbDRaA4htxirq1WUeQ/exec";
-        let API_BASE = localStorage.getItem("SOP_V2_API_URL") || DEFAULT_API_URL;
+        // 預設 API 網址 (v10 決策欄位版)
+        const DEFAULT_API_URL = "https://script.google.com/macros/s/AKfycbxwKgM6YfN7eJt4Li-M19ewj9keGyIaZz10zi6uyo0jURGtUVWqoIPUX1nHeJIQf8Fdtg/exec";
+        const LEGACY_API_URLS = [
+            "https://script.google.com/macros/s/AKfycbySNxkSIhGNsICNptNdjNy8QE7vv2Ak0uTB_mW1kjn3r-D_TfqnbbDRaA4htxirq1WUeQ/exec"
+        ];
+        const storedApiUrl = localStorage.getItem("SOP_V2_API_URL");
+        if (storedApiUrl && LEGACY_API_URLS.includes(storedApiUrl)) {
+            localStorage.removeItem("SOP_V2_API_URL");
+        }
+        let API_BASE = storedApiUrl && !LEGACY_API_URLS.includes(storedApiUrl) ? storedApiUrl : DEFAULT_API_URL;
         
         let trendChartInstance = null;
         let compChartInstance = null;
