@@ -43,6 +43,8 @@
         .tf-btn.inactive:hover { color: #374151; background-color: rgba(255,255,255,0.5); }
         .decision-card { min-height: 132px; }
         .status-dot { width: 0.55rem; height: 0.55rem; border-radius: 9999px; display: inline-block; }
+        #stopped-strategy-wrapper summary { list-style: none; }
+        #stopped-strategy-wrapper summary::-webkit-details-marker { display: none; }
     </style>
 </head>
 <body class="text-gray-800 pb-10">
@@ -216,10 +218,19 @@
         </div>
 
         <!-- 3. Strategy Details (Bottom Row) -->
-        <h2 class="text-lg font-bold text-gray-800 mb-4 mt-6">策略決策面板 (依獲利貢獻排序)</h2>
+        <h2 class="text-lg font-bold text-gray-800 mb-4 mt-6">策略決策面板 (運行策略)</h2>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4" id="strategy-cards">
             <!-- JS 動態生成策略卡片 -->
         </div>
+        <details class="mt-6 hidden" id="stopped-strategy-wrapper">
+            <summary id="stopped-strategy-toggle" class="w-full flex items-center justify-between bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-200 rounded-lg px-4 py-3 text-sm font-bold transition-colors cursor-pointer">
+                <span>已停用策略</span>
+                <span><span id="stopped-strategy-count">0</span> 個，點擊展開</span>
+            </summary>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4 mt-4" id="stopped-strategy-cards">
+                <!-- JS 動態生成停用策略卡片 -->
+            </div>
+        </details>
 
         <!-- Footer -->
         <div class="text-center mt-12 text-gray-400 text-xs font-medium">
@@ -511,7 +522,11 @@
             strategyDecisions.sort((a, b) => b.netProfitUSDC - a.netProfitUSDC);
 
             const cardsContainer = document.getElementById('strategy-cards');
+            const stoppedWrapper = document.getElementById('stopped-strategy-wrapper');
+            const stoppedCardsContainer = document.getElementById('stopped-strategy-cards');
             cardsContainer.innerHTML = '';
+            stoppedCardsContainer.innerHTML = '';
+            stoppedWrapper.open = false;
 
             if (latestData['BANK_CASH']) {
                 const bankCashUSD = parseMoney(latestData['BANK_CASH'].equality) / 100;
@@ -540,7 +555,7 @@
                 </div>
             `;
 
-            strategyDecisions.forEach(item => {
+            const renderStrategyCard = (item) => {
                 const equityUSD = item.equityUSDC / 100;
                 const floatUSD = item.floatingUSDC / 100;
                 const netProfitUSD = item.netProfitUSDC / 100;
@@ -550,7 +565,7 @@
                 const roiColor = item.roi === null ? "text-gray-500" : item.roi >= 0 ? "text-success" : "text-danger";
                 const cfg = statusConfig[item.decision.status] || statusConfig.active;
 
-                cardsContainer.innerHTML += `
+                return `
                     <div class="bg-white rounded-lg p-4 border-l-4 shadow-sm hover:shadow-md transition-shadow relative flex flex-col justify-between" style="border-left-color: ${item.decision.statusColor}">
                         <div>
                             <div class="flex justify-between items-start gap-2 mb-2">
@@ -590,7 +605,20 @@
                         </div>
                     </div>
                 `;
+            };
+
+            const runningStrategies = strategyDecisions.filter(item => item.decision.status !== "stopped");
+            const stoppedStrategies = strategyDecisions.filter(item => item.decision.status === "stopped");
+
+            runningStrategies.forEach(item => {
+                cardsContainer.innerHTML += renderStrategyCard(item);
             });
+
+            stoppedStrategies.forEach(item => {
+                stoppedCardsContainer.innerHTML += renderStrategyCard(item);
+            });
+            stoppedWrapper.classList.toggle('hidden', stoppedStrategies.length === 0);
+            document.getElementById('stopped-strategy-count').innerText = stoppedStrategies.length;
 
             // 4. 更新 KPI 指標
             const last7Dates = uniqueDates.slice(-7);
