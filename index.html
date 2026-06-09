@@ -41,6 +41,8 @@
         .tf-btn.active { background-color: #FFFFFF; color: #1E3A8A; box-shadow: 0 1px 3px rgba(0,0,0,0.1); font-weight: 600; }
         .tf-btn.inactive { color: #6B7280; }
         .tf-btn.inactive:hover { color: #374151; background-color: rgba(255,255,255,0.5); }
+        .decision-card { min-height: 132px; }
+        .status-dot { width: 0.55rem; height: 0.55rem; border-radius: 9999px; display: inline-block; }
     </style>
 </head>
 <body class="text-gray-800 pb-10">
@@ -50,9 +52,9 @@
         <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
             <div>
                 <h1 class="text-2xl font-bold text-primary flex items-center gap-2">
-                    <span>📊</span> SOP-v2 總體資產戰情室
+                    <span>📊</span> SOP-v2 每日交易決策儀表板
                 </h1>
-                <p class="text-sm text-gray-500 mt-1">短中目標：每月 $5,000 USD 現金流 | 長期目標：$40,000 USD 組合規模</p>
+                <p class="text-sm text-gray-500 mt-1">每日判斷：資金安全、策略貢獻、浮虧壓力、停用/觀察/續抱</p>
             </div>
             <div class="flex items-center gap-2">
                 <!-- API 狀態與時間指示器 -->
@@ -79,11 +81,11 @@
         </div>
 
         <!-- 1. KPI Cards (Top Row) -->
-        <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8 gap-4 mb-6">
             <!-- 總權益 (包含已提領現金) -->
-            <div class="glass-card rounded-xl p-5 shadow-sm border-t-4 border-primary">
+            <div class="glass-card decision-card rounded-xl p-4 shadow-sm border-t-4 border-primary">
                 <div class="text-sm text-gray-500 mb-1 font-medium">總創造財富 (含已提領)</div>
-                <div class="text-3xl font-bold text-gray-900" id="kpi-total-equity">$0.00</div>
+                <div class="text-2xl font-bold text-gray-900" id="kpi-total-equity">$0.00</div>
                 <div class="mt-2 text-xs flex justify-between">
                     <span class="text-gray-500">初始基準: $20,000</span>
                     <span id="kpi-total-roi" class="font-medium text-success">0.00%</span>
@@ -91,9 +93,9 @@
             </div>
 
             <!-- 本月獲利進度 -->
-            <div class="glass-card rounded-xl p-5 shadow-sm border-t-4 border-purple relative overflow-hidden">
+            <div class="glass-card decision-card rounded-xl p-4 shadow-sm border-t-4 border-purple relative overflow-hidden">
                 <div class="text-sm text-gray-500 mb-1 font-medium">本月現金流進度 (目標 $5K)</div>
-                <div class="text-3xl font-bold text-purple" id="kpi-monthly-profit">$0.00</div>
+                <div class="text-2xl font-bold text-purple" id="kpi-monthly-profit">$0.00</div>
                 <div class="mt-2 text-xs flex justify-between mb-1">
                     <span class="text-gray-500 font-semibold">實收淨利 (已扣分潤)</span>
                     <span id="kpi-monthly-progress" class="font-medium text-purple">0.0%</span>
@@ -104,25 +106,46 @@
             </div>
 
             <!-- 總累計獲利 -->
-            <div class="glass-card rounded-xl p-5 shadow-sm border-t-4 border-accent">
+            <div class="glass-card decision-card rounded-xl p-4 shadow-sm border-t-4 border-accent">
                 <div class="text-sm text-gray-500 mb-1 font-medium">總累計獲利 (實收淨利)</div>
-                <div class="text-3xl font-bold text-accent" id="kpi-total-profit">$0.00</div>
+                <div class="text-2xl font-bold text-accent" id="kpi-total-profit">$0.00</div>
                 <div class="mt-2 text-xs text-gray-500">
                     共計 <span id="kpi-trading-days" class="font-bold">0</span> 個交易日
                 </div>
             </div>
 
+            <!-- 目前風險燈號 -->
+            <div class="glass-card decision-card rounded-xl p-4 shadow-sm border-t-4 border-danger">
+                <div class="text-sm text-gray-500 mb-1 font-medium">目前風險燈號</div>
+                <div class="text-2xl font-bold text-gray-900" id="kpi-risk-state">--</div>
+                <div class="mt-2 text-xs text-gray-500" id="kpi-risk-summary">等待資料同步</div>
+            </div>
+
+            <!-- 最大浮虧策略 -->
+            <div class="glass-card decision-card rounded-xl p-4 shadow-sm border-t-4 border-warning">
+                <div class="text-sm text-gray-500 mb-1 font-medium">最大浮虧策略</div>
+                <div class="text-xl font-bold text-gray-900 truncate" id="kpi-drawdown-leader">--</div>
+                <div class="mt-2 text-xs text-gray-500" id="kpi-drawdown-detail">浮虧壓力待計算</div>
+            </div>
+
+            <!-- 近期主要貢獻 -->
+            <div class="glass-card decision-card rounded-xl p-4 shadow-sm border-t-4 border-success">
+                <div class="text-sm text-gray-500 mb-1 font-medium">近期主要貢獻</div>
+                <div class="text-xl font-bold text-gray-900 truncate" id="kpi-top-contributor">--</div>
+                <div class="mt-2 text-xs text-gray-500" id="kpi-top-contributor-detail">近 7 日淨利待計算</div>
+            </div>
+
             <!-- 近7日均獲利 -->
-            <div class="glass-card rounded-xl p-5 shadow-sm border-t-4 border-success">
+            <div class="glass-card decision-card rounded-xl p-4 shadow-sm border-t-4 border-success">
                 <div class="text-sm text-gray-500 mb-1 font-medium">近7日均獲利 (7-Day Avg)</div>
-                <div class="text-3xl font-bold text-success" id="kpi-7day-avg">$0.00</div>
+                <div class="text-2xl font-bold text-success" id="kpi-7day-avg">$0.00</div>
                 <div class="mt-2 text-xs text-gray-500">日均現金流動能</div>
             </div>
 
             <!-- 目標進度 -->
-            <div class="glass-card rounded-xl p-5 shadow-sm border-t-4 border-warning">
+            <div class="glass-card decision-card rounded-xl p-4 shadow-sm border-t-4 border-warning">
                 <div class="text-sm text-gray-500 mb-1 font-medium">目標進度 (Goal: $40,000)</div>
-                <div class="text-3xl font-bold text-gray-900" id="kpi-goal-days">-- 天</div>
+                <div class="text-2xl font-bold text-gray-900" id="kpi-goal-days">-- 天</div>
                 <div class="mt-2 text-xs text-gray-500 flex justify-between">
                     <span>差額: <span id="kpi-goal-diff" class="text-warning font-medium">$0.00</span></span>
                 </div>
@@ -161,26 +184,39 @@
 
             <!-- 策略貢獻佔比 (35%) -->
             <div class="w-full lg:w-[35%] bg-white rounded-xl shadow-sm border border-border p-5">
-                <h2 class="text-lg font-bold text-gray-800 mb-4">策略累計淨利貢獻 (含 ROI)</h2>
+                <h2 class="text-lg font-bold text-gray-800 mb-4">策略獲利貢獻排行 (含 ROI)</h2>
                 <div class="chart-container">
                     <canvas id="compChart"></canvas>
                 </div>
             </div>
         </div>
 
-        <!-- 獨立 FundPool 變化曲線 -->
-        <div class="bg-white rounded-xl shadow-sm border border-border p-3 mb-6 hidden" id="fundpool-chart-wrapper">
-            <div class="flex justify-between items-center mb-1 px-1">
-                <h2 class="text-xs font-bold text-gray-500 uppercase tracking-wider">備用資金池動能 (FundPool Sparkline)</h2>
-                <span class="text-xs text-purple font-semibold" id="mini-fundpool-val"></span>
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6 hidden" id="decision-charts-wrapper">
+            <div class="bg-white rounded-xl shadow-sm border border-border p-5">
+                <h2 class="text-sm font-bold text-gray-800 mb-3">近 7 / 30 日策略淨利</h2>
+                <div class="chart-container">
+                    <canvas id="rollingProfitChart"></canvas>
+                </div>
             </div>
-            <div class="sparkline-container">
-                <canvas id="fundPoolChart"></canvas>
+            <div class="bg-white rounded-xl shadow-sm border border-border p-5">
+                <h2 class="text-sm font-bold text-gray-800 mb-3">浮虧壓力排行</h2>
+                <div class="chart-container">
+                    <canvas id="drawdownChart"></canvas>
+                </div>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm border border-border p-5" id="fundpool-chart-wrapper">
+                <div class="flex justify-between items-center mb-3">
+                    <h2 class="text-sm font-bold text-gray-800">FundPool 水位</h2>
+                    <span class="text-xs text-purple font-semibold" id="mini-fundpool-val"></span>
+                </div>
+                <div class="chart-container">
+                    <canvas id="fundPoolChart"></canvas>
+                </div>
             </div>
         </div>
 
         <!-- 3. Strategy Details (Bottom Row) -->
-        <h2 class="text-lg font-bold text-gray-800 mb-4 mt-6">策略即時監控面板 (動態加總投入本金版)</h2>
+        <h2 class="text-lg font-bold text-gray-800 mb-4 mt-6">策略決策面板 (依獲利貢獻排序)</h2>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4" id="strategy-cards">
             <!-- JS 動態生成策略卡片 -->
         </div>
@@ -228,6 +264,8 @@
         let trendChartInstance = null;
         let compChartInstance = null;
         let fundPoolChartInstance = null;
+        let rollingProfitChartInstance = null;
+        let drawdownChartInstance = null;
 
         window.globalTransactions = [];
         window.globalStrategyInfo = {}; 
@@ -250,6 +288,75 @@
         const formatUSD = (num) => {
             return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(num);
         };
+
+        const parseMoney = (value) => {
+            if (value === undefined || value === null || value === "") return 0;
+            const parsed = parseFloat(String(value).replace(/,/g, ''));
+            return Number.isFinite(parsed) ? parsed : 0;
+        };
+
+        const statusConfig = {
+            active: { label: "正常", color: "#10B981", text: "text-success", bg: "bg-emerald-50", border: "border-emerald-200", action: "續抱" },
+            watch: { label: "觀察", color: "#F59E0B", text: "text-warning", bg: "bg-amber-50", border: "border-amber-200", action: "觀察一週" },
+            paused: { label: "警戒", color: "#EF4444", text: "text-danger", bg: "bg-red-50", border: "border-red-200", action: "降低資金或暫停跟單" },
+            stopped: { label: "停用", color: "#6B7280", text: "text-gray-500", bg: "bg-gray-100", border: "border-gray-200", action: "移出組合" }
+        };
+
+        function normalizeStatus(value) {
+            const normalized = String(value || "").trim().toLowerCase();
+            if (["active", "normal", "ok", "正常"].includes(normalized)) return "active";
+            if (["watch", "observe", "觀察"].includes(normalized)) return "watch";
+            if (["paused", "pause", "warning", "警戒", "暫停"].includes(normalized)) return "paused";
+            if (["stopped", "stop", "closed", "停用", "已停用"].includes(normalized)) return "stopped";
+            return "";
+        }
+
+        function inferRiskDecision(strategyName, latest, info) {
+            const manualStatus = normalizeStatus(latest.status ?? info?.status);
+            const balance = parseMoney(latest.balance);
+            const floatingPL = parseMoney(latest.floatingPL);
+            const equity = parseMoney(latest.equality);
+            const apiFloatingRatio = latest.floatingRatio ?? info?.floatingRatio;
+            const floatingRatio = apiFloatingRatio !== undefined && apiFloatingRatio !== ""
+                ? Number(apiFloatingRatio)
+                : (balance > 0 ? floatingPL / balance : 0);
+            const maxDrawdown = parseMoney(latest.maxDrawdown ?? info?.maxDrawdown);
+            const apiRiskLevel = String(latest.riskLevel ?? info?.riskLevel ?? "").trim();
+            const actionNote = String(latest.actionNote ?? info?.actionNote ?? "").trim();
+
+            let status = manualStatus;
+            if (!status) {
+                if (equity <= 0 && balance <= 0) status = "stopped";
+                else if (floatingRatio <= -0.20 || (strategyName.includes("JC_ICT") && floatingRatio <= -0.20)) status = "paused";
+                else if (floatingRatio <= -0.10) status = "watch";
+                else status = "active";
+            }
+
+            const config = statusConfig[status] || statusConfig.active;
+            const riskLevel = apiRiskLevel || (status === "active" ? "低" : status === "watch" ? "中" : status === "paused" ? "高" : "停用");
+            const action = actionNote || config.action;
+
+            return {
+                status,
+                statusLabel: config.label,
+                statusColor: config.color,
+                statusTextClass: config.text,
+                statusBgClass: config.bg,
+                statusBorderClass: config.border,
+                riskLevel,
+                action,
+                floatingRatio,
+                maxDrawdown
+            };
+        }
+
+        function buildWindowProfit(transactions, dates, windowSize) {
+            const dateSet = new Set(dates.slice(-windowSize));
+            return transactions.reduce((acc, tx) => {
+                if (dateSet.has(tx.date)) acc[tx.ea] = (acc[tx.ea] || 0) + tx.netPnl;
+                return acc;
+            }, {});
+        }
 
         async function initDashboard() {
             try {
@@ -288,175 +395,166 @@
 
         function processAndRender(historyData, latestData) {
             let totalStrategyEquityUSDC = 0;
-            let activeMarketEquityUSDC = 0; // 用來計算在市場裡的風險資金
-            let totalFloatingUSDC = 0;
+            let activeMarketEquityUSDC = 0;
             let alerts = [];
-            
-            window.globalTransactions = []; 
+            let highestRiskRank = 0;
 
-            // 1. 抓取全域 FundPool
+            window.globalTransactions = [];
+
             let globalFundPoolUSDC = 0;
             for (let i = historyData.length - 1; i >= 0; i--) {
-                const val = historyData[i].fundPool;
-                if (val !== undefined && val !== null && val !== "") {
-                    const rowFundPool = parseFloat(String(val).replace(/,/g, ''));
-                    if (!isNaN(rowFundPool) && rowFundPool > 0) {
-                        globalFundPoolUSDC = rowFundPool;
-                        break;
-                    }
+                const rowFundPool = parseMoney(historyData[i].fundPool);
+                if (rowFundPool > 0) {
+                    globalFundPoolUSDC = rowFundPool;
+                    break;
                 }
             }
             const globalFundPoolUSD = globalFundPoolUSDC / 100;
             document.getElementById('mini-fundpool-val').innerText = formatUSD(globalFundPoolUSD);
 
-            // 2. 處理歷史資料 
             let totalNetProfitUSDC = 0;
-            const dailyNetProfitMap = {}; 
-            const strategyNetProfitSum = {}; 
-            const dailyFundPoolMap = {}; 
-            let runningFundPool = 0; 
+            const dailyNetProfitMap = {};
+            const strategyNetProfitSum = {};
+            const dailyFundPoolMap = {};
+            let runningFundPool = 0;
 
             const uniqueDatesSet = new Set();
-            historyData.forEach(r => uniqueDatesSet.add(r.date));
+            historyData.forEach(r => {
+                if (r.date) uniqueDatesSet.add(r.date);
+            });
             const uniqueDates = Array.from(uniqueDatesSet).sort();
             const tradingDaysCount = uniqueDates.length;
-
-            let currentMonthString = "";
-            if (uniqueDates.length > 0) {
-                currentMonthString = uniqueDates[uniqueDates.length - 1].substring(0, 7); 
-            }
-
+            const currentMonthString = uniqueDates.length > 0 ? uniqueDates[uniqueDates.length - 1].substring(0, 7) : "";
             let currentMonthNetProfitUSDC = 0;
 
             historyData.forEach(row => {
-                let rawGross = row.grossPnL ?? row.GrossPnL ?? 0;
-                const grossPnl = parseFloat(String(rawGross).replace(/,/g, '')) || 0;
-                let rawProfitShare = row.profitShare ?? row.ProfitShare ?? row.profit_share ?? 0;
-                const profitShare = parseFloat(String(rawProfitShare).replace(/,/g, '')) || 0; 
+                const grossPnl = parseMoney(row.grossPnL ?? row.GrossPnL);
+                const profitShare = parseMoney(row.profitShare ?? row.ProfitShare ?? row.profit_share);
                 const netPnl = grossPnl - Math.abs(profitShare);
-
                 const ea = row.strategy;
                 const date = row.date;
-                
-                let rowFundPool = 0;
-                if (row.fundPool !== undefined && row.fundPool !== null && row.fundPool !== "") {
-                    rowFundPool = parseFloat(String(row.fundPool).replace(/,/g, ''));
-                }
-                if (!isNaN(rowFundPool) && rowFundPool > 0) {
-                    runningFundPool = rowFundPool;
-                }
-                dailyFundPoolMap[date] = runningFundPool; 
+                if (!ea || !date) return;
 
-                // BANK_CASH 不參與淨利加總與圖表動態
+                const rowFundPool = parseMoney(row.fundPool);
+                if (rowFundPool > 0) runningFundPool = rowFundPool;
+                dailyFundPoolMap[date] = runningFundPool;
+
                 if (ea !== 'BANK_CASH') {
                     if (grossPnl !== 0 || netPnl !== 0) {
                         totalNetProfitUSDC += netPnl;
-                        if (date.startsWith(currentMonthString)) {
-                            currentMonthNetProfitUSDC += netPnl;
-                        }
-                        window.globalTransactions.push({ date: date, ea: ea, netPnl: netPnl });
+                        if (date.startsWith(currentMonthString)) currentMonthNetProfitUSDC += netPnl;
+                        window.globalTransactions.push({ date, ea, netPnl });
                     }
 
                     if (!dailyNetProfitMap[date]) dailyNetProfitMap[date] = {};
                     dailyNetProfitMap[date][ea] = (dailyNetProfitMap[date][ea] || 0) + netPnl;
                     strategyNetProfitSum[ea] = (strategyNetProfitSum[ea] || 0) + netPnl;
                 }
-                
-                getEaColor(ea); 
+
+                getEaColor(ea);
             });
 
-            // 3. 處理最新狀態與 EA 策略卡片
-            const cardsContainer = document.getElementById('strategy-cards');
-            cardsContainer.innerHTML = ''; 
+            const last7ProfitMap = buildWindowProfit(window.globalTransactions, uniqueDates, 7);
+            const last30ProfitMap = buildWindowProfit(window.globalTransactions, uniqueDates, 30);
+            const strategyDecisions = [];
 
-            // ================== 特殊卡片渲染區 ==================
-            
-            // A. 已入袋實體銀行現金 (如果存在)
+            Object.keys(latestData).forEach(strategyName => {
+                const s = latestData[strategyName];
+                if (strategyName === 'BANK_CASH') {
+                    totalStrategyEquityUSDC += parseMoney(s.equality);
+                    return;
+                }
+
+                const info = window.globalStrategyInfo[strategyName] || {};
+                const equityUSDC = parseMoney(s.equality);
+                const balanceUSDC = parseMoney(s.balance);
+                const floatingUSDC = parseMoney(s.floatingPL);
+                const netProfitUSDC = strategyNetProfitSum[strategyName] || 0;
+                const investedCapitalUSDC = parseMoney(info.initialBalance) + parseMoney(info.initialCredit);
+                const decision = inferRiskDecision(strategyName, s, info);
+                const statusRank = { active: 1, watch: 2, paused: 3, stopped: 0 }[decision.status] || 1;
+
+                totalStrategyEquityUSDC += equityUSDC;
+                if (decision.status !== "stopped") activeMarketEquityUSDC += equityUSDC;
+                highestRiskRank = Math.max(highestRiskRank, statusRank);
+                getEaColor(strategyName);
+
+                if (decision.status === "paused") {
+                    alerts.push(`${strategyName} 進入${decision.statusLabel}：浮虧 ${(decision.floatingRatio * 100).toFixed(1)}%，建議 ${decision.action}`);
+                }
+
+                const roi = investedCapitalUSDC > 0 ? (netProfitUSDC / investedCapitalUSDC) * 100 : null;
+                strategyDecisions.push({
+                    name: strategyName,
+                    latest: s,
+                    platform: info.platform || s.platform || "--",
+                    date: s.date || "--",
+                    equityUSDC,
+                    balanceUSDC,
+                    floatingUSDC,
+                    netProfitUSDC,
+                    last7USDC: last7ProfitMap[strategyName] || 0,
+                    last30USDC: last30ProfitMap[strategyName] || 0,
+                    investedCapitalUSDC,
+                    roi,
+                    decision
+                });
+            });
+
+            strategyDecisions.sort((a, b) => b.netProfitUSDC - a.netProfitUSDC);
+
+            const cardsContainer = document.getElementById('strategy-cards');
+            cardsContainer.innerHTML = '';
+
             if (latestData['BANK_CASH']) {
-                const bankCashUSD = latestData['BANK_CASH'].equality / 100;
-                totalStrategyEquityUSDC += latestData['BANK_CASH'].equality; // 計入總財富
-                
-                const bankCardHTML = `
+                const bankCashUSD = parseMoney(latestData['BANK_CASH'].equality) / 100;
+                cardsContainer.innerHTML += `
                     <div class="bg-gradient-to-br from-yellow-50 to-white rounded-lg p-4 border-l-4 shadow-md relative overflow-hidden border-yellow-500">
                         <div class="flex justify-between items-start mb-2">
-                            <h3 class="font-bold text-yellow-700 text-sm truncate w-full">🌟 已提領入袋 (Realized)</h3>
+                            <h3 class="font-bold text-yellow-700 text-sm truncate w-full">已提領入袋 (Realized)</h3>
                         </div>
                         <div class="text-2xl font-bold text-yellow-600 mb-1">${formatUSD(bankCashUSD)}</div>
                         <div class="mt-3 flex flex-col gap-1.5 pt-3 border-t border-yellow-100">
-                            <div class="flex justify-between items-center">
-                                <span class="text-xs text-yellow-600 font-medium">已轉移至實體銀行帳戶</span>
-                            </div>
+                            <span class="text-xs text-yellow-600 font-medium">已轉移至實體銀行帳戶</span>
                         </div>
                     </div>
                 `;
-                cardsContainer.innerHTML += bankCardHTML;
             }
 
-            // B. 全域備用資金池
-            const fundPoolCardHTML = `
+            cardsContainer.innerHTML += `
                 <div class="bg-white rounded-lg p-4 border-l-4 shadow-sm relative overflow-hidden" style="border-left-color: #8B5CF6">
                     <div class="flex justify-between items-start mb-2">
-                        <h3 class="font-bold text-gray-800 text-sm truncate w-full" title="FundPool">🏦 全域備用資金池</h3>
+                        <h3 class="font-bold text-gray-800 text-sm truncate w-full" title="FundPool">全域備用資金池</h3>
                     </div>
                     <div class="text-xl font-bold text-gray-900 mb-1">${formatUSD(globalFundPoolUSD)}</div>
                     <div class="mt-3 flex flex-col gap-1.5 pt-3 border-t border-gray-100">
-                        <div class="flex justify-between items-center">
-                            <span class="text-xs text-purple font-medium">隨時支援前線，獨立控管</span>
-                        </div>
+                        <span class="text-xs text-purple font-medium">隨時支援前線，獨立控管</span>
                     </div>
                 </div>
             `;
-            cardsContainer.innerHTML += fundPoolCardHTML;
 
-            // ====================================================
+            strategyDecisions.forEach(item => {
+                const equityUSD = item.equityUSDC / 100;
+                const floatUSD = item.floatingUSDC / 100;
+                const netProfitUSD = item.netProfitUSDC / 100;
+                const last7USD = item.last7USDC / 100;
+                const investedCapitalUSD = item.investedCapitalUSDC / 100;
+                const roiPercentStr = item.roi === null ? "N/A" : `${item.roi > 0 ? '+' : ''}${item.roi.toFixed(2)}%`;
+                const roiColor = item.roi === null ? "text-gray-500" : item.roi >= 0 ? "text-success" : "text-danger";
+                const cfg = statusConfig[item.decision.status] || statusConfig.active;
 
-            Object.keys(latestData).forEach(strategyName => {
-                if (strategyName === 'BANK_CASH') return; // 已單獨處理
-                
-                const s = latestData[strategyName];
-                if (s.equality === 0 && s.balance === 0) return; 
-
-                totalStrategyEquityUSDC += s.equality; 
-                activeMarketEquityUSDC += s.equality; // 計算在市場承受風險的資金
-                totalFloatingUSDC += s.floatingPL;
-                getEaColor(strategyName);
-
-                const floatingRatio = s.floatingPL / s.balance;
-                let isDanger = false;
-                if (strategyName.includes('JC_ICT') && floatingRatio < -0.20) {
-                    alerts.push(`JC_ICT 浮虧達 ${(floatingRatio * 100).toFixed(1)}%，觸發停機紅線！`);
-                    isDanger = true;
-                }
-
-                const equityUSD = s.equality / 100;
-                const floatUSD = s.floatingPL / 100;
-                const isFloatNegative = floatUSD < 0;
-
-                const netProfitUSD = (strategyNetProfitSum[strategyName] || 0) / 100;
-                const info = window.globalStrategyInfo[strategyName];
-                
-                // ✨ 整合 dynamic get_strategy_info：投入本金 = I欄 (initialBalance) + J欄 (initialCredit) 的加總
-                let investedCapitalUSD = 0;
-                let roiPercentStr = "N/A";
-                let roiColor = "text-gray-500";
-
-                if (info) {
-                    investedCapitalUSD = (Number(info.initialBalance || 0) + Number(info.initialCredit || 0)) / 100;
-                    if (investedCapitalUSD > 0) {
-                        const roi = (netProfitUSD / investedCapitalUSD) * 100;
-                        roiPercentStr = (roi > 0 ? '+' : '') + roi.toFixed(2) + '%';
-                        roiColor = roi >= 0 ? "text-success" : "text-danger";
-                    }
-                }
-
-                const cardHTML = `
-                    <div class="bg-white rounded-lg p-4 border-l-4 shadow-sm hover:shadow-md transition-shadow relative flex flex-col justify-between" style="border-left-color: ${getEaColor(strategyName)}">
-                        ${isDanger ? '<div class="absolute top-0 right-0 w-8 h-8 bg-danger transform rotate-45 translate-x-4 -translate-y-4"></div>' : ''}
-                        
+                cardsContainer.innerHTML += `
+                    <div class="bg-white rounded-lg p-4 border-l-4 shadow-sm hover:shadow-md transition-shadow relative flex flex-col justify-between" style="border-left-color: ${item.decision.statusColor}">
                         <div>
-                            <div class="flex justify-between items-start mb-1">
-                                <h3 class="font-bold text-gray-800 text-sm truncate w-3/4" title="${strategyName}">${strategyName}</h3>
-                                <span class="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">${s.date.substring(5)}</span>
+                            <div class="flex justify-between items-start gap-2 mb-2">
+                                <h3 class="font-bold text-gray-800 text-sm truncate" title="${item.name}">${item.name}</h3>
+                                <span class="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 shrink-0">${String(item.date).substring(5)}</span>
+                            </div>
+                            <div class="flex items-center justify-between gap-2 mb-2">
+                                <span class="inline-flex items-center gap-1.5 text-[11px] font-bold px-2 py-1 rounded-full border ${cfg.bg} ${cfg.border} ${cfg.text}">
+                                    <span class="status-dot" style="background:${item.decision.statusColor}"></span>${item.decision.statusLabel}
+                                </span>
+                                <span class="text-[11px] text-gray-500 truncate">${item.platform} / 風險 ${item.decision.riskLevel}</span>
                             </div>
                             <div class="text-xl font-bold text-gray-900 mb-1">${formatUSD(equityUSD)}</div>
                             <div class="text-xs text-gray-500 mb-2">投入本金: ${formatUSD(investedCapitalUSD)}</div>
@@ -465,24 +563,26 @@
                         <div class="mt-2 flex flex-col gap-1.5 pt-2 border-t border-gray-100">
                             <div class="flex justify-between items-center">
                                 <span class="text-xs text-gray-500">累計實收:</span>
-                                <span class="text-sm font-semibold ${netProfitUSD >= 0 ? 'text-gray-700' : 'text-danger'}">
-                                    ${formatUSD(netProfitUSD)}
-                                </span>
+                                <span class="text-sm font-semibold ${netProfitUSD >= 0 ? 'text-gray-700' : 'text-danger'}">${formatUSD(netProfitUSD)}</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-xs text-gray-500">近 7 日:</span>
+                                <span class="text-sm font-semibold ${last7USD >= 0 ? 'text-success' : 'text-danger'}">${formatUSD(last7USD)}</span>
                             </div>
                             <div class="flex justify-between items-center">
                                 <span class="text-xs text-gray-500 font-bold">總 ROI:</span>
                                 <span class="text-sm font-bold ${roiColor}">${roiPercentStr}</span>
                             </div>
                             <div class="flex justify-between items-center mt-1 bg-gray-50 p-1 rounded">
-                                <span class="text-xs text-gray-500">即時浮損:</span>
-                                <span class="text-xs font-bold ${isFloatNegative ? 'text-danger' : 'text-success'}">
-                                    ${floatUSD > 0 ? '+' : ''}${formatUSD(floatUSD)}
-                                </span>
+                                <span class="text-xs text-gray-500">浮虧壓力:</span>
+                                <span class="text-xs font-bold ${floatUSD < 0 ? 'text-danger' : 'text-success'}">${floatUSD > 0 ? '+' : ''}${formatUSD(floatUSD)} (${(item.decision.floatingRatio * 100).toFixed(1)}%)</span>
+                            </div>
+                            <div class="text-[11px] font-semibold rounded-md px-2 py-1 ${cfg.bg} ${cfg.text} border ${cfg.border}">
+                                建議：${item.decision.action}
                             </div>
                         </div>
                     </div>
                 `;
-                cardsContainer.innerHTML += cardHTML;
             });
 
             // 4. 更新 KPI 指標
@@ -524,6 +624,31 @@
 
             document.getElementById('kpi-7day-avg').innerText = formatUSD(avg7DayUSD);
 
+            const topContributor = [...strategyDecisions].sort((a, b) => b.last7USDC - a.last7USDC)[0];
+            const drawdownLeader = [...strategyDecisions].sort((a, b) => a.floatingUSDC - b.floatingUSDC)[0];
+            if (topContributor) {
+                document.getElementById('kpi-top-contributor').innerText = topContributor.name;
+                document.getElementById('kpi-top-contributor-detail').innerText = `近 7 日 ${formatUSD(topContributor.last7USDC / 100)}`;
+            }
+            if (drawdownLeader) {
+                document.getElementById('kpi-drawdown-leader').innerText = drawdownLeader.name;
+                document.getElementById('kpi-drawdown-detail').innerText = `${formatUSD(drawdownLeader.floatingUSDC / 100)} / ${(drawdownLeader.decision.floatingRatio * 100).toFixed(1)}%`;
+            }
+
+            const riskSummary = {
+                1: { label: "正常", cls: "text-2xl font-bold text-success", msg: "全部策略在通用安全區" },
+                2: { label: "觀察", cls: "text-2xl font-bold text-warning", msg: "有策略進入觀察區" },
+                3: { label: "警戒", cls: "text-2xl font-bold text-danger", msg: "有策略建議降風險" },
+                4: { label: "停用", cls: "text-2xl font-bold text-gray-500", msg: "有策略已停用或歸零" }
+            }[highestRiskRank || 1];
+            const statusCounts = strategyDecisions.reduce((acc, item) => {
+                acc[item.decision.status] = (acc[item.decision.status] || 0) + 1;
+                return acc;
+            }, {});
+            document.getElementById('kpi-risk-state').innerText = riskSummary.label;
+            document.getElementById('kpi-risk-state').className = riskSummary.cls;
+            document.getElementById('kpi-risk-summary').innerText = `${riskSummary.msg}｜觀察 ${statusCounts.watch || 0} / 警戒 ${statusCounts.paused || 0} / 停用 ${statusCounts.stopped || 0}`;
+
             const goalUSD = 40000;
             const diffGoalUSD = goalUSD - totalWealthUSD;
             if (diffGoalUSD <= 0) {
@@ -556,11 +681,13 @@
             // 5. 繪製圖表
             document.getElementById('chart-loader').classList.add('hidden');
             document.getElementById('main-charts-wrapper').classList.remove('hidden');
-            document.getElementById('fundpool-chart-wrapper').classList.remove('hidden');
+            document.getElementById('decision-charts-wrapper').classList.remove('hidden');
 
             updateTrendChart('day');
             renderCompChart(strategyNetProfitSum);
             renderFundPoolChart(uniqueDates, dailyFundPoolMap);
+            renderRollingProfitChart(strategyDecisions);
+            renderDrawdownPressureChart(strategyDecisions);
         }
 
         function updateTrendChart(timeframe) {
@@ -742,6 +869,97 @@
                         }
                     },
                     interaction: { intersect: false, mode: 'index' }
+                }
+            });
+        }
+
+        function renderRollingProfitChart(strategyDecisions) {
+            const ctx = document.getElementById('rollingProfitChart').getContext('2d');
+            if (rollingProfitChartInstance) rollingProfitChartInstance.destroy();
+
+            const rows = [...strategyDecisions]
+                .filter(item => item.last7USDC !== 0 || item.last30USDC !== 0)
+                .sort((a, b) => b.last7USDC - a.last7USDC)
+                .slice(0, 8);
+
+            rollingProfitChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: rows.map(item => item.name),
+                    datasets: [
+                        {
+                            label: '近 7 日',
+                            data: rows.map(item => item.last7USDC / 100),
+                            backgroundColor: '#10B981',
+                            borderRadius: 4
+                        },
+                        {
+                            label: '近 30 日',
+                            data: rows.map(item => item.last30USDC / 100),
+                            backgroundColor: '#3B82F6',
+                            borderRadius: 4
+                        }
+                    ]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } },
+                        tooltip: {
+                            callbacks: {
+                                label: context => `${context.dataset.label}: ${formatUSD(context.parsed.x)}`
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { ticks: { callback: value => '$' + value }, grid: { color: '#F3F4F6' } },
+                        y: { grid: { display: false }, ticks: { font: { size: 10 } } }
+                    }
+                }
+            });
+        }
+
+        function renderDrawdownPressureChart(strategyDecisions) {
+            const ctx = document.getElementById('drawdownChart').getContext('2d');
+            if (drawdownChartInstance) drawdownChartInstance.destroy();
+
+            const rows = [...strategyDecisions]
+                .filter(item => item.floatingUSDC < 0 || item.decision.maxDrawdown < 0)
+                .sort((a, b) => a.floatingUSDC - b.floatingUSDC)
+                .slice(0, 8);
+
+            drawdownChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: rows.map(item => item.name),
+                    datasets: [{
+                        label: '即時浮虧',
+                        data: rows.map(item => item.floatingUSDC / 100),
+                        backgroundColor: rows.map(item => item.decision.statusColor),
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: context => {
+                                    const row = rows[context.dataIndex];
+                                    return `浮虧: ${formatUSD(context.parsed.x)} (${(row.decision.floatingRatio * 100).toFixed(1)}%)`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { ticks: { callback: value => '$' + value }, grid: { color: '#F3F4F6' } },
+                        y: { grid: { display: false }, ticks: { font: { size: 10 } } }
+                    }
                 }
             });
         }
